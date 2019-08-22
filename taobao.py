@@ -40,7 +40,7 @@ class tb_spider(object):
             self.browser.find_element_by_css_selector('#pl_login_logged > div > div:nth-child(7) > div:nth-child(1) > a').click()
             print('浏览器操作成功，等待校验登录状态...\n')
         except BaseException:
-            print('浏览器操作失败')
+            raise Exception('浏览器操作失败')
         try:
             self.username_test = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#J_SiteNavLogin > div.site-nav-menu-hd > div.site-nav-user > a')))
             if self.username_test.text == username_tb:
@@ -52,7 +52,7 @@ class tb_spider(object):
                     print('获取cookies失败！\n')
             self.browser.quit()
         except BaseException:
-            print('登录失败！')
+            raise Exception('登录失败')
 
     def transfer_cookies(self):
         self.useful_cookies = {}
