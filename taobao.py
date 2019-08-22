@@ -151,5 +151,3 @@ if __name__ == '__main__':
     spider.file.close()
     course_time =(datetime.datetime.now() - begin_time).seconds
     print('运行完毕，共耗时{}分{}秒'.format(course_time//60, course_time%60))
-
-test = {}
