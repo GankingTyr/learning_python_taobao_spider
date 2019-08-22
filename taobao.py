@@ -24,7 +24,12 @@ class tb_spider(object):
         self.ua = UserAgent()
         self.wait = WebDriverWait(self.browser, 10)
         self.search_goods_name = goods_name
-        self.file = open('C:\\Users\\NB70TK1\\PycharmProjects\\taobao\\data\\商品-{}-时间{}.csv'.format(goods_name, datetime.datetime.now().strftime('%m-%d-%H-%M-%S')), 'w+', encoding='utf-8')
+        self.count_success = 0
+        self.count_fail = 0
+        self.file = open('C:\\Users\\NB70TK1\\PycharmProjects\\taobao\\data\\商品-{}-时间{}.csv'.format(goods_name,
+                                                                                                    datetime.datetime.now().strftime(
+                                                                                                        '%m-%d-%H-%M-%S')),
+                         'w+', encoding='utf-8')
         self.file.write('产品名称,产品价格,产地,销量,卖家,是否是金牌卖家,是否是公益宝贝,是否属于天猫,物流评分,描述相符评分,服务评分,总评分,卖家信誉等级,评论数量,评论网址,产品详情,店铺链接\n')
 
     def webdriverlogin_getcookies(self):
@@ -33,16 +38,20 @@ class tb_spider(object):
             sleep(1)
             self.browser.find_element_by_partial_link_text('微博登录').click()
             sleep(1)
-            self.browser.find_element_by_css_selector('#pl_login_logged > div > div:nth-child(2) > div > input').send_keys(username)
+            self.browser.find_element_by_css_selector(
+                '#pl_login_logged > div > div:nth-child(2) > div > input').send_keys(username)
             sleep(1)
-            self.browser.find_element_by_css_selector('#pl_login_logged > div > div:nth-child(3) > div > input').send_keys(passwd)
+            self.browser.find_element_by_css_selector(
+                '#pl_login_logged > div > div:nth-child(3) > div > input').send_keys(passwd)
             sleep(1)
-            self.browser.find_element_by_css_selector('#pl_login_logged > div > div:nth-child(7) > div:nth-child(1) > a').click()
+            self.browser.find_element_by_css_selector(
+                '#pl_login_logged > div > div:nth-child(7) > div:nth-child(1) > a').click()
             print('浏览器操作成功，等待校验登录状态...\n')
         except BaseException:
             raise Exception('浏览器操作失败')
         try:
-            self.username_test = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#J_SiteNavLogin > div.site-nav-menu-hd > div.site-nav-user > a')))
+            self.username_test = self.wait.until(EC.presence_of_element_located(
+                (By.CSS_SELECTOR, '#J_SiteNavLogin > div.site-nav-menu-hd > div.site-nav-user > a')))
             if self.username_test.text == username_tb:
                 print('登录成功！\n')
                 self.raw_cookies = self.browser.get_cookies()
@@ -61,19 +70,20 @@ class tb_spider(object):
 
     def init_requests_session(self):
         self.re_tb = requests.session()
-        #print('正在使用以下cookies:\n{}'.format(str(self.useful_cookies)))
+        # print('正在使用以下cookies:\n{}'.format(str(self.useful_cookies)))
         self.re_tb.cookies.update(self.useful_cookies)
         print('cookies传递成功')
 
     def crawl_search_result(self):
-        for i in range(0, needed_pages_num*44, 44):
-            self.search_url = 'https://s.taobao.com/search?q={}&search_type=item&imgfile=&js=1&suggest_query=&source=suggest&s={}'.format(goods_name, i)
+        for i in range(0, needed_pages_num * 44, 44):
+            self.search_url = 'https://s.taobao.com/search?q={}&search_type=item&imgfile=&js=1&suggest_query=&source=suggest&s={}'.format(
+                goods_name, i)
             self.head = {'UserAgent': self.ua.random}
             self.re_tb.headers.update(self.head)
             self.response = self.re_tb.get(self.search_url)
             if self.response.status_code == 200:
                 self.page = self.response.text
-                self.parse_data(self.page, i/44)
+                self.parse_data(self.page, i / 44)
                 sleep(10.1)
             else:
                 print('请求异常：{}\n'.format(self.response.status_code))
@@ -82,7 +92,7 @@ class tb_spider(object):
         try:
             self.json_begin = page_content.find('g_page_config = ') + len('g_page_config = ')
             self.json_end = page_content.find('"shopcardOff":true}') + len('"shopcardOff":true}')
-            self.json_data = json.loads(page_content[self.json_begin:self.json_end+1])
+            self.json_data = json.loads(page_content[self.json_begin:self.json_end + 1])
         except BaseException:
             print(self.page)
             raise Exception('json解析错误！可能遭遇反爬机制')
@@ -100,9 +110,9 @@ class tb_spider(object):
                 product_comment_count = i['comment_count']
                 product_seller = i['nick']
                 if str(i).find('shopcard') != -1:
-                    product_rate_delivery = i['shopcard']['delivery'][0]/100
-                    product_rate_description = i['shopcard']['description'][0]/100
-                    product_rate_service = i['shopcard']['service'][0]/100
+                    product_rate_delivery = i['shopcard']['delivery'][0] / 100
+                    product_rate_description = i['shopcard']['description'][0] / 100
+                    product_rate_service = i['shopcard']['service'][0] / 100
                     if str(i).find('totalRate') != -1:
                         total_rate = i['shopcard']['totalRate']
                     else:
@@ -128,10 +138,24 @@ class tb_spider(object):
                 else:
                     product_is_commonweal_product = 'no'
                     product_is_Gold_seller = 'no'
-                self.file.write('{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(product_name, product_price, product_local, product_sales, product_seller, product_is_Gold_seller, product_is_commonweal_product, product_is_Tmall, product_rate_delivery, product_rate_description, product_rate_service, total_rate, seller_Credit, product_comment_count, product_comment, product_detail_url, product_shop_link))
-            print('第{}页解析成功'.format(int(currently_page)+1))
-        except  AttributeError:
+                self.file.write(
+                    '{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(product_name, product_price,
+                                                                                  product_local, product_sales,
+                                                                                  product_seller,
+                                                                                  product_is_Gold_seller,
+                                                                                  product_is_commonweal_product,
+                                                                                  product_is_Tmall,
+                                                                                  product_rate_delivery,
+                                                                                  product_rate_description,
+                                                                                  product_rate_service, total_rate,
+                                                                                  seller_Credit, product_comment_count,
+                                                                                  product_comment, product_detail_url,
+                                                                                  product_shop_link))
+            print('第{}页解析成功'.format(int(currently_page) + 1))
+            self.count_success += 1
+        except AttributeError:
             print('第{}页解析失败！'.format(currently_page))
+            self.count_fail += 1
             pass
 
 
@@ -149,6 +173,7 @@ if __name__ == '__main__':
     spider.init_requests_session()
     spider.crawl_search_result()
     spider.file.close()
-    course_time =(datetime.datetime.now() - begin_time).seconds
-    print('运行完毕，共耗时{}分{}秒'.format(course_time//60, course_time%60))
-
+    course_time = (datetime.datetime.now() - begin_time).seconds
+    print('运行完毕，共耗时{}分{}秒, 共解析{}个页面，其中{}个成功，{}个失败'.format(course_time // 60, course_time % 60,
+                                                          tb_spider.count_success + tb_spider.count_fail,
+                                                          tb_spider.count_success, tb_spider.count_fail))
