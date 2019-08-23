@@ -1,13 +1,10 @@
-import requests
 import json
 import datetime
-from fake_useragent import UserAgent
 from time import sleep
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
-
 
 class tb_spider(object):
     def __init__(self):
@@ -18,21 +15,19 @@ class tb_spider(object):
         self.options.add_argument('--disable-gpu')
         self.options.add_argument('--headless')
         self.url = 'https://login.taobao.com/member/login.jhtml'
-        self.browser = webdriver.Chrome(options=self.options)
-        self.ua = UserAgent()
         self.search_goods_name = goods_name
         self.count_success = 0
         self.count_fail = 0
         self.count_re_try = 0
         self.re_try_wait_time = 0
-        self.file = open('C:\\Users\\NB70TK1\\PycharmProjects\\taobao\\data\\商品-{}-时间{}.csv'.format(goods_name,
-                                                                                                    datetime.datetime.now().strftime(
+        self.file = open('C:\\Users\\NB70TK1\\PycharmProjects\\taobao\\data\\商品-{}-时间{}.csv'.format(goods_name, datetime.datetime.now().strftime(
                                                                                                         '%m-%d-%H-%M-%S')),
                          'w+', encoding='utf-8')
         self.file.write('产品名称,产品价格,产地,销量,卖家,是否是金牌卖家,是否是公益宝贝,是否属于天猫,物流评分,描述相符评分,服务评分,总评分,卖家信誉等级,评论数量,评论网址,产品详情,店铺链接\n')
 
-    def webdriverlogin_getcookies(self):
+    def webdriver_login(self):
         try:
+            self.browser = webdriver.Chrome(options=self.options)
             self.browser.get(self.url)
             self.browser.find_element_by_partial_link_text('密码登录').click()
             sleep(1)
@@ -55,60 +50,31 @@ class tb_spider(object):
                 (By.CSS_SELECTOR, '#J_SiteNavLogin > div.site-nav-menu-hd > div.site-nav-user > a')))
             if self.username_test.text == username_tb:
                 print('登录成功！\n')
-                self.raw_cookies = self.browser.get_cookies()
-                if self.raw_cookies:
-                    print('获取cookies成功！\n')
-                else:
-                    print('获取cookies失败！\n')
         except BaseException:
             raise Exception('登录失败')
 
-    def transfer_cookies(self):
-        self.useful_cookies = {}
-        for i in self.raw_cookies:
-            self.useful_cookies[i['name']] = i['value']
+    def webdriver_search(self):
+        try:
+            self.browser.find_element_by_css_selector('#q').send_keys('{}'.format(self.search_goods_name))
+            self.browser.find_element_by_css_selector('#J_TSearchForm > div.search-button > button').click()
+        except BaseException:
+            raise Exception('搜索操作失败！')
 
-    def init_requests_session(self):
-        self.re_tb = requests.session()
-        # print('正在使用以下cookies:\n{}'.format(str(self.useful_cookies)))
-        self.re_tb.cookies.update(self.useful_cookies)
-        print('cookies传递成功')
-
-    def crawl_search_result(self, start_page=0):
-        for i in range(start_page, needed_pages_num * 44, 44):
-            self.search_url = 'https://s.taobao.com/search?q={}&search_type=item&imgfile=&js=1&suggest_query=&source=suggest&s={}'.format(
-                goods_name, i)
-            self.head = {'UserAgent': self.ua.random}
-            self.re_tb.headers.update(self.head)
-            self.response = self.re_tb.get(self.search_url)
-            if self.response.status_code == 200:
-                self.page = self.response.text
-                self.parse_data(self.page, i / 44)
-                sleep(0.5)
-                self.count_total = self.count_success + self.count_fail
-                if self.count_total % 10 == 0:
-                    if self.count_total == needed_pages_num:
-                        pass
-                    else:
-                        print('暂停120秒\n')
-                        for i in range(120, 0, -1):
-                            sleep(1)
-                            print('{}分{}秒后继续'.format(i // 60, i % 60), end=' \r')
-                else:
-                    pass
-            else:
-                print('请求异常：{}\n'.format(self.response.status_code))
-
-    def re_try(self, block_page_number):
-        self.count_re_try += 1
-        print('{}分钟后尝试第{}次重新请求\n'.format(self.count_re_try * 15, self.count_re_try))
-        for i in range(self.count_re_try * 15 * 60, 0, -1):
+    def webdriver_get_html(self):
+        for i in range(needed_pages_num):
+            self.parse_data(self.browser.page_source, i)
             sleep(1)
-            print('{}分{}秒后重试'.format(i // 60, i % 60), end=' \r')
-        self.webdriverlogin_getcookies()
-        self.transfer_cookies()
-        self.init_requests_session()
-        self.crawl_search_result(int(block_page_number * 44))
+            try:
+                self.wait_next = self.wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, '#mainsrp-pager > div > div > div > ul > li.item.next > a')))
+                for i in range(2):
+                    self.browser.execute_script('window.scrollBy(0,2000)')
+                    sleep(2)
+                self.browser.find_element_by_css_selector(
+                    '#mainsrp-pager > div > div > div > ul > li.item.next > a').click()
+            except BaseException:
+                print('没有下一页了！\n')
+                pass
 
     def parse_data(self, page_content, currently_page):
         try:
@@ -172,9 +138,12 @@ class tb_spider(object):
                                                                                   product_is_Tmall,
                                                                                   product_rate_delivery,
                                                                                   product_rate_description,
-                                                                                  product_rate_service, total_rate,
-                                                                                  seller_Credit, product_comment_count,
-                                                                                  product_comment, product_detail_url,
+                                                                                  product_rate_service,
+                                                                                  total_rate,
+                                                                                  seller_Credit,
+                                                                                  product_comment_count,
+                                                                                  product_comment,
+                                                                                  product_detail_url,
                                                                                   product_shop_link))
             print('第{}页解析成功'.format(int(currently_page) + 1))
             self.count_success += 1
@@ -193,12 +162,12 @@ if __name__ == '__main__':
 
     begin_time = datetime.datetime.now()
     spider = tb_spider()
-    spider.webdriverlogin_getcookies()
-    spider.transfer_cookies()
-    spider.init_requests_session()
-    spider.crawl_search_result()
-    spider.file.close()
+    spider.webdriver_login()
+    spider.webdriver_search()
+    spider.webdriver_get_html()
     spider.browser.quit()
+    spider.file.close()
+    spider.count_total = spider.count_success + spider.count_fail
     course_time = (datetime.datetime.now() - begin_time).seconds
     print('运行完毕，共耗时{}分{}秒, 共解析{}个页面，其中{}个成功，{}个失败'.format(course_time // 60, course_time % 60,
                                                           spider.count_total,
