@@ -89,13 +89,13 @@ class tb_spider(object):
                 if self.count_total % 10 == 0:
                     if self.count_total <= 50:
                         print('暂停两分钟\n')
-                        sleep(180)
+                        sleep(120)
                     else:
                         if self.count_total == needed_pages_num:
                             pass
                         else:
                             print('暂停五分钟\n')
-                            sleep(300)
+                            sleep(120)
                 else:
                     pass
             else:
