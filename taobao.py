@@ -84,9 +84,25 @@ class tb_spider(object):
             if self.response.status_code == 200:
                 self.page = self.response.text
                 self.parse_data(self.page, i / 44)
-                sleep(10.1)
+                sleep(1.5)
+                self.count_total = self.count_success + self.count_fail
+                if self.count_total % 10 == 0:
+                    if self.count_total <= 50:
+                        print('暂停两分钟\n')
+                        sleep(180)
+                    else:
+                        if self.count_total == needed_pages_num:
+                            pass
+                        else:
+                            print('暂停五分钟\n')
+                            sleep(300)
+                else:
+                    pass
             else:
                 print('请求异常：{}\n'.format(self.response.status_code))
+
+    def re_try(self):
+        pass
 
     def parse_data(self, page_content, currently_page):
         try:
@@ -175,5 +191,5 @@ if __name__ == '__main__':
     spider.file.close()
     course_time = (datetime.datetime.now() - begin_time).seconds
     print('运行完毕，共耗时{}分{}秒, 共解析{}个页面，其中{}个成功，{}个失败'.format(course_time // 60, course_time % 60,
-                                                          tb_spider.count_success + tb_spider.count_fail,
-                                                          tb_spider.count_success, tb_spider.count_fail))
+                                                          spider.count_total,
+                                                          spider.count_success, spider.count_fail))
